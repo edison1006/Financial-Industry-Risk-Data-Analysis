@@ -11,10 +11,10 @@ core/data/raw/*.csv
 data/raw/
 data/*.csv
 
-# Visualizations
-visualizations/
-*.png
-*.html
+# Generated outputs (optional: remove these lines to commit report + charts to GitHub)
+# visualizations/
+# *.png
+# *.html
 
 # OS
 .DS_Store
