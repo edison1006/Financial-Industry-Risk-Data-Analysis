@@ -1,0 +1,11 @@
+loan_id,customer_id,product_type,origination_date,principal_nzd,interest_rate_apr,term_months,channel,status
+1001,1,Personal,2024-01-01,94459,0.177,12,Online,Active
+1002,2,Auto,2024-02-01,434535,0.1359,60,Branch,Active
+1003,3,Personal,2024-03-01,418300,0.1779,36,Online,Active
+1004,4,Personal,2024-04-01,227321,0.1576,24,Online,Active
+1005,5,Auto,2024-05-01,310811,0.1731,24,Broker,Active
+1006,6,Mortgage,2024-06-01,301927,0.0529,12,Broker,Active
+1007,7,Personal,2024-07-01,52397,0.0667,60,Branch,Active
+1008,8,Mortgage,2024-08-01,106661,0.0973,24,Online,Active
+1009,9,Personal,2024-09-01,350034,0.1047,60,Online,Active
+1010,10,Mortgage,2024-10-01,302081,0.1528,24,Online,Active

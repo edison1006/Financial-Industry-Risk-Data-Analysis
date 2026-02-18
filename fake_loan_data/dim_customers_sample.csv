@@ -1,0 +1,11 @@
+customer_id,age,annual_income_nzd,employment_type,region,credit_score,tenure_months
+1,31,135681,Contractor,Auckland,729,29
+2,51,108295,Salaried,Wellington,797,70
+3,62,122803,Self-employed,Canterbury,619,39
+4,37,140595,Self-employed,Auckland,697,83
+5,42,84378,Salaried,Auckland,786,34
+6,29,107286,Contractor,Auckland,613,108
+7,36,79321,Salaried,Canterbury,692,20
+8,49,109992,Self-employed,Wellington,650,104
+9,57,43966,Salaried,Auckland,725,77
+10,49,78093,Contractor,Wellington,722,84

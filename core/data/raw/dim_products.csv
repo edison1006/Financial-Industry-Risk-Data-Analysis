@@ -1,0 +1,5 @@
+product_type,secured_flag,base_risk_tier
+Personal,False,High
+Auto,True,Medium
+Mortgage,True,Low
+SME,False,High
