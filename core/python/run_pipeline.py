@@ -6,7 +6,7 @@ def run(cmd):
 
 def main():
     run(["python", "generate_data.py"])
-    run(["python", "load_to_postgres.py"])
+    run(["python", "load_data.py"])
 
 if __name__ == "__main__":
     main()

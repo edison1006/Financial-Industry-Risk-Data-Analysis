@@ -1,17 +1,19 @@
 -- 03_mart_views_plus_balance.sql
-SET search_path TO loan_analytics;
+DROP VIEW IF EXISTS mart_portfolio_snapshot_v2;
+DROP VIEW IF EXISTS mart_balance_eop;
+DROP VIEW IF EXISTS mart_principal_paid_by_month;
 
 -- Monthly principal repaid from schedule (proxy)
-CREATE OR REPLACE VIEW mart_principal_paid_by_month AS
+CREATE VIEW mart_principal_paid_by_month AS
 SELECT
   loan_id,
-  (date_trunc('month', due_date)::date + interval '1 month - 1 day')::date AS month_end,
+  date(due_date, 'start of month', '+1 month', '-1 day') AS month_end,
   SUM(scheduled_principal) AS sched_principal
 FROM fct_schedule
 GROUP BY 1,2;
 
 -- EOP balance = orig principal - cumulative scheduled principal (clamped)
-CREATE OR REPLACE VIEW mart_balance_eop AS
+CREATE VIEW mart_balance_eop AS
 WITH p AS (
   SELECT
     l.loan_id,
@@ -22,7 +24,7 @@ WITH p AS (
   JOIN (SELECT DISTINCT month_end FROM mart_loan_dpd_bucket) m ON 1=1
   LEFT JOIN mart_principal_paid_by_month pp
     ON pp.loan_id = l.loan_id AND pp.month_end = m.month_end
-  WHERE m.month_end >= (date_trunc('month', l.origination_date)::date + interval '1 month - 1 day')::date
+  WHERE m.month_end >= date(l.origination_date, 'start of month', '+1 month', '-1 day')
 ),
 cum AS (
   SELECT
@@ -35,11 +37,11 @@ cum AS (
 SELECT
   loan_id,
   month_end,
-  GREATEST(0, (principal_nzd - cum_principal))::numeric(14,2) AS eop_balance
+  ROUND(MAX(0, (principal_nzd - cum_principal)), 2) AS eop_balance
 FROM cum;
 
 -- Upgraded snapshot v2 (use this for Power BI)
-CREATE OR REPLACE VIEW mart_portfolio_snapshot_v2 AS
+CREATE VIEW mart_portfolio_snapshot_v2 AS
 SELECT
   s.month_end,
   s.loan_id,

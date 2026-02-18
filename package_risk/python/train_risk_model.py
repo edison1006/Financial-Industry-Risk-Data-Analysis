@@ -9,14 +9,34 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score, precision_recall_fscore_support
 
 def main():
-    pg_url = os.getenv("PG_URL")
-    if not pg_url:
-        raise ValueError("Set PG_URL, e.g. export PG_URL='postgresql://user:pwd@localhost:5432/db'")
+    db_url = os.getenv("DB_URL") or os.getenv("PG_URL") or os.getenv("DATABASE_URL")
+    if not db_url:
+        raise ValueError(
+            "Set DB_URL environment variable.\n"
+            "Examples: DB_URL='sqlite:///loan_demo.db' or DB_URL='mysql+pymysql://user:password@localhost:3306/loan_demo'"
+        )
 
-    engine = create_engine(pg_url)
+    engine = create_engine(db_url)
 
-    feat = pd.read_sql("SELECT * FROM loan_analytics.risk_features_3m", engine)
-    lab = pd.read_sql("SELECT * FROM loan_analytics.risk_labels_60p_3m", engine)
+    # Performance note: risk_features_3m can be large. Train on a recent window.
+    feat = pd.read_sql(
+        """
+        WITH mx AS (SELECT MAX(month_end) AS mx FROM risk_features_3m)
+        SELECT *
+        FROM risk_features_3m
+        WHERE month_end >= date((SELECT mx FROM mx), '-24 months')
+        """,
+        engine,
+    )
+    lab = pd.read_sql(
+        """
+        WITH mx AS (SELECT MAX(month_end) AS mx FROM risk_labels_60p_3m)
+        SELECT *
+        FROM risk_labels_60p_3m
+        WHERE month_end >= date((SELECT mx FROM mx), '-24 months')
+        """,
+        engine,
+    )
     df = feat.merge(lab, on=["loan_id","month_end"], how="inner")
 
     # keep rows with enough history
@@ -53,8 +73,8 @@ def main():
     # score full dataset
     df["risk_score"] = pipe.predict_proba(X)[:, 1]
     out = df[["loan_id","month_end","risk_score","will_be_60p_in_3m"]]
-    out.to_sql("risk_scores", engine, schema="loan_analytics", if_exists="replace", index=False)
-    print("✅ Saved loan_analytics.risk_scores")
+    out.to_sql("risk_scores", engine, if_exists="replace", index=False)
+    print("Saved risk_scores")
 
 if __name__ == "__main__":
     main()

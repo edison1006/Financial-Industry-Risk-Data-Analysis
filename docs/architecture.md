@@ -2,7 +2,7 @@
 
 ## Overview
 
-The platform follows a three-layer architecture: **data generation** produces synthetic loan portfolio data, **PostgreSQL** stores and transforms it through a layered mart structure, and **Power BI** consumes the marts for interactive dashboards.
+The platform follows a three-layer architecture: **data generation** produces synthetic loan portfolio data, **SQL database** stores and transforms it through a layered mart structure, and **Power BI** consumes the marts for interactive dashboards.
 
 ```mermaid
 flowchart LR
@@ -12,7 +12,7 @@ flowchart LR
     GenPy --> CSV
   end
 
-  subgraph postgres [PostgreSQL Data Warehouse]
+  subgraph database [SQL Database Warehouse]
     direction TB
     Raw[Raw Tables]
     BaseMarts[Baseline Marts]
@@ -28,7 +28,7 @@ flowchart LR
     PowerBI[Power BI Dashboards]
   end
 
-  CSV -->|load_to_postgres.py| Raw
+  CSV -->|load_data.py| Raw
   RiskMarts -->|Features| RiskModel
   RiskModel -->|Scores| RiskMarts
   BaseMarts --> PowerBI
@@ -50,7 +50,7 @@ flowchart LR
 
 Risk behaviour is modelled via a sigmoid function of borrower credit quality, income, product risk tier, and channel risk multiplier, ensuring the synthetic data has realistic delinquency patterns.
 
-### 2. PostgreSQL Data Warehouse
+### 2. SQL Database Warehouse
 
 All tables live in the `loan_analytics` schema. The warehouse follows a Kimball-style star schema:
 
@@ -71,7 +71,7 @@ See [Risk Methodology](methodology_risk.md) for full details.
 
 ### 4. Power BI Consumption
 
-Power BI connects to PostgreSQL via DirectQuery or Import and uses the `mart_portfolio_snapshot_v2` view as the central fact table. DAX measures for each package are defined in:
+Power BI connects to your SQL database via DirectQuery or Import and uses the `mart_portfolio_snapshot_v2` view as the central fact table. DAX measures for each package are defined in:
 
 - `package_risk/powerbi/measures_dax.md`
 - `package_commercial/powerbi/measures_dax.md`
@@ -80,27 +80,24 @@ Power BI connects to PostgreSQL via DirectQuery or Import and uses the `mart_por
 
 | Component | Technology | Rationale |
 |---|---|---|
-| Database | PostgreSQL 13+ | Industry standard, free, widely supported by BI tools |
+| Database | SQL (SQLite, MySQL, SQL Server, PostgreSQL, etc.) | Standard SQL, widely supported by BI tools |
 | Data generation | Python (pandas, numpy) | Flexible synthetic data with controllable risk parameters |
 | ML model | scikit-learn (LogisticRegression) | Interpretable, auditable, appropriate for binary classification |
 | Visualisation | Power BI | Industry standard in financial services for stakeholder reporting |
-| Orchestration | Python scripts (`run_all.py`) | Simple, no external scheduler dependency |
+| Orchestration | Manual Python scripts | Step-by-step execution for full control |
 
 ## Execution Flow
 
 ```mermaid
 flowchart TD
-  RunAll[run_all.py] --> RunCore[run_core.py]
-  RunAll --> RunRisk[run_risk.py]
-  RunAll --> RunComm[run_commercial.py]
-  RunCore --> InstallDeps[Install dependencies]
-  RunCore --> CreateSchema[Create schema + tables]
-  RunCore --> GenLoad[Generate data + load to PG]
-  RunCore --> BuildMarts[Build baseline marts]
-  RunRisk --> RiskSQL[Create risk features + labels]
-  RunRisk --> TrainModel[Train risk model + write scores]
-  RunRisk --> Watchlist[Create watchlist view]
-  RunComm --> CommSQL[Create commercial marts]
+  Start[Manual Setup] --> InstallDeps[Install dependencies]
+  InstallDeps --> CreateSchema[Create schema + tables]
+  CreateSchema --> GenLoad[Generate data + load to PG]
+  GenLoad --> BuildMarts[Build baseline marts]
+  BuildMarts --> RiskSQL[Create risk features + labels]
+  RiskSQL --> TrainModel[Train risk model + write scores]
+  TrainModel --> Watchlist[Create watchlist view]
+  BuildMarts --> CommSQL[Create commercial marts]
 ```
 
 Each step is idempotent: `CREATE OR REPLACE VIEW` and `IF NOT EXISTS` allow safe re-runs.

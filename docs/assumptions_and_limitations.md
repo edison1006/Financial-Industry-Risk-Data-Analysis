@@ -68,7 +68,7 @@ This creates realistic correlations between borrower quality and delinquency, bu
 ## 6. Power BI Measures
 
 DAX measures in `measures_dax.md` are templates. They assume:
-- DirectQuery or Import connection to the PostgreSQL views
+- DirectQuery or Import connection to the SQL database views
 - `mart_portfolio_snapshot_v2` is the primary fact table
 - Date slicing is done on `month_end` (not a full date dimension)
 

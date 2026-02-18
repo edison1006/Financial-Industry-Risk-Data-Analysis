@@ -87,7 +87,7 @@ flowchart TD
 
 ### Layer 1: Raw Tables
 
-Loaded from CSV files by `core/python/load_to_postgres.py`. Tables are truncated and reloaded on each run.
+Loaded from CSV files by `core/python/load_data.py`. Tables are cleared and reloaded on each run.
 
 | Table | Source CSV | Row Count |
 |---|---|---|
@@ -101,7 +101,7 @@ Loaded from CSV files by `core/python/load_to_postgres.py`. Tables are truncated
 
 ### Layer 2: Baseline Marts
 
-Defined in `core/sql/03_mart_views.sql`. All are PostgreSQL views (computed on read).
+Defined in `core/sql/03_mart_views.sql`. All are SQL views (computed on read).
 
 | View | Sources | Grain | Logic Summary |
 |---|---|---|---|

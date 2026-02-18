@@ -8,7 +8,7 @@
 
 ## Setup
 1) Run core steps first (schema, data generation, load, baseline marts, plus balance):
-- `core/sql/01_schema_postgres.sql`
+- `core/sql/01_schema.sql`
 - `core/sql/03_mart_views.sql`
 - `core/sql/03_mart_views_plus_balance.sql`
 
@@ -17,7 +17,7 @@
 
 3) Train and write back scores:
 ```bash
-export PG_URL="postgresql://user:password@localhost:5432/yourdb"
+export DB_URL="sqlite:///loan_demo.db"  # Or MySQL, SQL Server, PostgreSQL connection string
 python package_risk/python/train_risk_model.py
 ```
 

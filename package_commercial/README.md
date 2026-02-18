@@ -8,7 +8,7 @@
 
 ## Setup
 1) Run core steps first (schema, data generation, load, baseline marts, plus balance):
-- `core/sql/01_schema_postgres.sql`
+- `core/sql/01_schema.sql`
 - `core/sql/03_mart_views.sql`
 - `core/sql/03_mart_views_plus_balance.sql`
 

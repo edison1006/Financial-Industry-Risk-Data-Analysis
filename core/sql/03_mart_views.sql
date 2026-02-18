@@ -1,18 +1,30 @@
 -- 03_mart_views.sql
-CREATE SCHEMA IF NOT EXISTS loan_analytics;
-SET search_path TO loan_analytics;
+-- SQLite-compatible marts (no PostgreSQL-only functions).
 
--- Month ends
-CREATE OR REPLACE VIEW v_month_ends AS
-SELECT (date_trunc('month', dd)::date + interval '1 month - 1 day')::date AS month_end
-FROM generate_series('2022-01-01'::date, '2026-12-31'::date, interval '1 month') dd;
+DROP VIEW IF EXISTS mart_vintage_60plus;
+DROP VIEW IF EXISTS mart_dpd_migration;
+DROP VIEW IF EXISTS mart_portfolio_snapshot;
+DROP VIEW IF EXISTS mart_loan_dpd_bucket;
+DROP VIEW IF EXISTS mart_loan_arrears;
+DROP VIEW IF EXISTS mart_loan_due_paid;
+DROP VIEW IF EXISTS v_month_ends;
+
+-- Month ends (calendar)
+CREATE VIEW v_month_ends AS
+WITH RECURSIVE months(m) AS (
+  SELECT date('2022-01-01')
+  UNION ALL
+  SELECT date(m, '+1 month') FROM months WHERE m < date('2026-12-01')
+)
+SELECT date(m, 'start of month', '+1 month', '-1 day') AS month_end
+FROM months;
 
 -- Scheduled vs paid same-month by loan
-CREATE OR REPLACE VIEW mart_loan_due_paid AS
+CREATE VIEW mart_loan_due_paid AS
 WITH sch AS (
   SELECT
     loan_id,
-    (date_trunc('month', due_date)::date + interval '1 month - 1 day')::date AS due_month_end,
+    date(due_date, 'start of month', '+1 month', '-1 day') AS due_month_end,
     SUM(scheduled_amount) AS scheduled_amt
   FROM fct_schedule
   GROUP BY 1,2
@@ -20,7 +32,7 @@ WITH sch AS (
 pay AS (
   SELECT
     loan_id,
-    (date_trunc('month', payment_date)::date + interval '1 month - 1 day')::date AS pay_month_end,
+    date(payment_date, 'start of month', '+1 month', '-1 day') AS pay_month_end,
     SUM(paid_amount) AS paid_amt
   FROM fct_payments
   GROUP BY 1,2
@@ -36,7 +48,7 @@ LEFT JOIN pay p
  AND p.pay_month_end = s.due_month_end;
 
 -- Cumulative arrears
-CREATE OR REPLACE VIEW mart_loan_arrears AS
+CREATE VIEW mart_loan_arrears AS
 WITH base AS (
   SELECT
     loan_id,
@@ -64,7 +76,7 @@ SELECT
 FROM cum;
 
 -- DPD bucket approximation via missed-installments proxy
-CREATE OR REPLACE VIEW mart_loan_dpd_bucket AS
+CREATE VIEW mart_loan_dpd_bucket AS
 WITH s AS (
   SELECT loan_id, AVG(scheduled_amount) AS avg_inst
   FROM fct_schedule
@@ -84,7 +96,7 @@ b AS (
     loan_id,
     month_end,
     arrears_amt,
-    GREATEST(0, (arrears_amt / NULLIF(avg_inst,0))) AS missed_inst
+    MAX(0, (arrears_amt * 1.0 / NULLIF(avg_inst,0))) AS missed_inst
   FROM a
 )
 SELECT
@@ -102,7 +114,7 @@ SELECT
 FROM b;
 
 -- Portfolio snapshot v1
-CREATE OR REPLACE VIEW mart_portfolio_snapshot AS
+CREATE VIEW mart_portfolio_snapshot AS
 SELECT
   b.month_end,
   l.loan_id,
@@ -120,7 +132,7 @@ JOIN fct_loans l
   ON l.loan_id = b.loan_id;
 
 -- Migration matrix
-CREATE OR REPLACE VIEW mart_dpd_migration AS
+CREATE VIEW mart_dpd_migration AS
 WITH x AS (
   SELECT
     loan_id,
@@ -131,19 +143,19 @@ WITH x AS (
 )
 SELECT
   month_end,
-  prev_bucket,
-  dpd_bucket AS curr_bucket,
+  prev_bucket AS from_bucket,
+  dpd_bucket AS to_bucket,
   COUNT(*) AS loan_count
 FROM x
 WHERE prev_bucket IS NOT NULL
 GROUP BY 1,2,3;
 
 -- Vintage 60+ rate by MOB
-CREATE OR REPLACE VIEW mart_vintage_60plus AS
+CREATE VIEW mart_vintage_60plus AS
 WITH orig AS (
   SELECT
     loan_id,
-    (date_trunc('month', origination_date)::date + interval '1 month - 1 day')::date AS orig_month_end
+    date(origination_date, 'start of month', '+1 month', '-1 day') AS vintage_month
   FROM fct_loans
 ),
 snap AS (
@@ -153,20 +165,22 @@ snap AS (
 mob AS (
   SELECT
     s.loan_id,
-    o.orig_month_end,
+    o.vintage_month,
     s.month_end,
-    ( (date_part('year', s.month_end) - date_part('year', o.orig_month_end)) * 12
-      + (date_part('month', s.month_end) - date_part('month', o.orig_month_end)) )::int AS months_on_book,
+    (
+      (CAST(strftime('%Y', s.month_end) AS INTEGER) - CAST(strftime('%Y', o.vintage_month) AS INTEGER)) * 12
+      + (CAST(strftime('%m', s.month_end) AS INTEGER) - CAST(strftime('%m', o.vintage_month) AS INTEGER))
+    ) AS months_on_books,
     s.dpd_bucket
   FROM snap s
   JOIN orig o ON o.loan_id = s.loan_id
-  WHERE s.month_end >= o.orig_month_end
+  WHERE s.month_end >= o.vintage_month
 )
 SELECT
-  orig_month_end,
-  months_on_book,
+  vintage_month,
+  months_on_books,
   COUNT(*) AS loan_cnt,
-  SUM(CASE WHEN dpd_bucket IN ('DPD_60_89','DPD_90_PLUS') THEN 1 ELSE 0 END) AS bad_60p_cnt,
-  (SUM(CASE WHEN dpd_bucket IN ('DPD_60_89','DPD_90_PLUS') THEN 1 ELSE 0 END)::numeric / NULLIF(COUNT(*),0)) AS bad_60p_rate
+  SUM(CASE WHEN dpd_bucket IN ('DPD_60_89','DPD_90_PLUS') THEN 1 ELSE 0 END) AS bad_60plus_cnt,
+  (SUM(CASE WHEN dpd_bucket IN ('DPD_60_89','DPD_90_PLUS') THEN 1 ELSE 0 END) * 1.0 / NULLIF(COUNT(*),0)) AS rate_60plus
 FROM mob
 GROUP BY 1,2;

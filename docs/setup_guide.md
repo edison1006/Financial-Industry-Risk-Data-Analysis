@@ -5,7 +5,7 @@
 | Tool | Version | Purpose |
 |---|---|---|
 | Python | 3.10 or higher | Data generation, loading, model training |
-| PostgreSQL | 13 or higher | Data warehouse |
+| SQL Database | Any SQLAlchemy-supported database | Data warehouse (SQLite, MySQL, SQL Server, PostgreSQL, etc.) |
 | pip | Latest | Python package management |
 | Power BI Desktop | Latest (optional) | Dashboard visualisation |
 
@@ -13,61 +13,151 @@ Verify your environment:
 
 ```bash
 python --version    # should be 3.10+
-psql --version      # should be 13+
 ```
 
 ## 1. Database Setup
 
-Create a PostgreSQL database for the project:
+This project supports multiple database engines. Choose one:
+
+### Option A: SQLite (Simplest - No Server Needed)
+
+No setup required! SQLite creates a file-based database automatically.
+
+```powershell
+# Windows PowerShell
+$env:DB_URL="sqlite:///loan_demo.db"
+```
 
 ```bash
-createdb loan_demo
+# Linux/Mac
+export DB_URL="sqlite:///loan_demo.db"
 ```
 
-Or via psql:
+### Option B: MySQL
 
-```sql
-CREATE DATABASE loan_demo;
-```
+1. Install MySQL server
+2. Create database:
+   ```sql
+   CREATE DATABASE loan_demo;
+   ```
+3. Set connection:
+   ```powershell
+   $env:DB_URL="mysql+pymysql://username:password@localhost:3306/loan_demo"
+   ```
+4. Install driver: `pip install pymysql`
+
+### Option C: SQL Server
+
+1. Install SQL Server
+2. Create database:
+   ```sql
+   CREATE DATABASE loan_demo;
+   ```
+3. Set connection:
+   ```powershell
+   $env:DB_URL="mssql+pyodbc://username:password@localhost:1433/loan_demo?driver=ODBC+Driver+17+for+SQL+Server"
+   ```
+4. Install driver: `pip install pyodbc`
+
+### Option D: PostgreSQL
+
+1. Install PostgreSQL
+2. Create database:
+   ```sql
+   CREATE DATABASE loan_demo;
+   ```
+3. Set connection:
+   ```powershell
+   $env:DB_URL="postgresql://username:password@localhost:5432/loan_demo"
+   ```
+4. Install driver: `pip install psycopg2-binary` (optional)
+
+See [Database Setup Guide](database_setup.md) for detailed instructions for each database type.
 
 ## 2. Set the Connection String
 
-All scripts read the database connection from the `PG_URL` environment variable:
+All scripts read the database connection from the `DB_URL` environment variable (also accepts `PG_URL` or `DATABASE_URL` for compatibility):
 
-```bash
-export PG_URL="postgresql://username:password@localhost:5432/loan_demo"
+**Windows PowerShell:**
+```powershell
+# SQLite (recommended for testing)
+$env:DB_URL="sqlite:///loan_demo.db"
+
+# MySQL
+$env:DB_URL="mysql+pymysql://username:password@localhost:3306/loan_demo"
+
+# SQL Server
+$env:DB_URL="mssql+pyodbc://username:password@localhost:1433/loan_demo?driver=ODBC+Driver+17+for+SQL+Server"
+
+# PostgreSQL
+$env:DB_URL="postgresql://username:password@localhost:5432/loan_demo"
 ```
 
-Replace `username` and `password` with your PostgreSQL credentials. Add this to your shell profile (`.zshrc` or `.bashrc`) to persist across sessions.
-
-## 3. Run Everything (Recommended)
-
-The simplest way to set up the entire platform:
-
+**Linux/Mac:**
 ```bash
-python run_all.py
+# SQLite
+export DB_URL="sqlite:///loan_demo.db"
+
+# MySQL
+export DB_URL="mysql+pymysql://username:password@localhost:3306/loan_demo"
 ```
 
-This executes the following in order:
+Replace `username` and `password` with your database credentials.
 
-1. Installs Python dependencies (`core/python/requirements.txt`)
-2. Creates the `loan_analytics` schema and all tables
-3. Generates synthetic data (CSV) and loads it into PostgreSQL
-4. Builds baseline marts (DPD, migration, vintage, EOP balance)
-5. Builds risk features and trains the early-warning model
-6. Creates the risk watchlist view
-7. Builds commercial marts (interest income, NII, RAR)
+**Note:** On Windows, environment variables set this way only persist for the current session. To make it permanent:
+- Add to your PowerShell profile: `$env:DB_URL = "sqlite:///loan_demo.db"`
+- Or use System Properties → Environment Variables (permanent for all sessions)
 
-Alternatively, use the shell wrapper:
+## 3. Manual Setup Steps
+
+Follow these steps manually to set up the platform:
+
+### Step 1: Install Dependencies
 
 ```bash
-chmod +x run_all.sh
-./run_all.sh
+cd core/python
+pip install -r requirements.txt
+```
+
+### Step 2: Create Schema and Tables
+
+```bash
+python run_sql.py ../sql/01_schema.sql
+```
+
+### Step 3: Generate Data and Load to PostgreSQL
+
+```bash
+python run_pipeline.py
+```
+
+This generates synthetic data (CSV) and loads it into your database.
+
+### Step 4: Build Baseline Marts
+
+```bash
+python run_sql.py ../sql/03_mart_views.sql ../sql/03_mart_views_plus_balance.sql
+```
+
+### Step 5: Build Risk Package (Optional)
+
+```bash
+cd ../../package_risk
+python ../core/python/run_sql.py sql/10_risk_features.sql
+python python/train_risk_model.py
+python ../core/python/run_sql.py sql/11_risk_score_view.sql
+```
+
+### Step 6: Build Commercial Package (Optional)
+
+```bash
+cd ../package_commercial
+python ../core/python/run_sql.py sql/20_commercial_marts.sql
 ```
 
 ## 4. Verify the Setup
 
-After `run_all.py` completes, verify with these queries:
+After completing the manual setup steps, verify with these queries:
 
 ```sql
 -- Check row counts
@@ -105,10 +195,10 @@ pip install -r requirements.txt
 ### Step 2: Create schema and tables
 
 ```bash
-python run_sql.py ../sql/01_schema_postgres.sql
+python run_sql.py ../sql/01_schema.sql
 ```
 
-### Step 3: Generate data and load into PostgreSQL
+### Step 3: Generate data and load into database
 
 ```bash
 python run_pipeline.py
@@ -138,11 +228,15 @@ python ../core/python/run_sql.py sql/20_commercial_marts.sql
 
 ## 6. Power BI Connection
 
-### Connect to PostgreSQL
+### Connect to Database
 
 1. Open Power BI Desktop
-2. Get Data -> PostgreSQL database
-3. Server: `localhost` (or your host), Database: `loan_demo`
+2. Get Data -> Select your database type:
+   - **SQL Server database** (for SQL Server)
+   - **MySQL database** (for MySQL)
+   - **PostgreSQL database** (for PostgreSQL)
+   - **SQLite database** (for SQLite - may need ODBC driver)
+3. Enter connection details (server, database, credentials)
 4. Choose **DirectQuery** or **Import** mode
 
 ### Recommended Tables to Import
@@ -176,45 +270,47 @@ Paste measures from:
 
 ## Troubleshooting
 
-### psycopg2-binary fails to build
+### DB_URL not set
 
-**Symptom:** `error: failed-wheel-build-install` when installing `psycopg2-binary`
+**Symptom:** `Missing database connection` error
 
-**Cause:** No pre-built wheel for your Python version (common with Python 3.13+)
+**Fix:** Set the DB_URL environment variable before running:
 
-**Fix:** The project uses `psycopg2-binary>=2.9.10` which supports Python 3.13. If you still see the error, try:
+```powershell
+# Windows PowerShell
+$env:DB_URL="sqlite:///loan_demo.db"  # Simplest option
+
+# Or for other databases:
+$env:DB_URL="mysql+pymysql://user:password@localhost:3306/loan_demo"
+```
 
 ```bash
-pip install --upgrade pip
+# Linux/Mac
+export DB_URL="sqlite:///loan_demo.db"
+```
+
+### Database driver not found
+
+**Symptom:** `No module named 'pymysql'` or similar
+
+**Fix:** Install the appropriate database driver:
+
+```bash
+# For MySQL
+pip install pymysql
+
+# For SQL Server
+pip install pyodbc
+
+# For PostgreSQL (optional)
 pip install psycopg2-binary
-```
-
-Or install the non-binary version (requires PostgreSQL development headers):
-
-```bash
-brew install postgresql    # macOS
-pip install psycopg2
-```
-
-### PG_URL not set
-
-**Symptom:** `Missing PG_URL` error
-
-**Fix:** Set the environment variable before running:
-
-```bash
-export PG_URL="postgresql://user:password@localhost:5432/loan_demo"
 ```
 
 ### Permission denied on schema
 
 **Symptom:** `permission denied for schema loan_analytics`
 
-**Fix:** Ensure your PostgreSQL user has CREATE privileges:
-
-```sql
-GRANT ALL ON DATABASE loan_demo TO your_user;
-```
+**Fix:** Ensure your database user has CREATE privileges. For SQLite, this is not an issue.
 
 ### Views return zero rows
 
@@ -227,3 +323,14 @@ SELECT COUNT(*) FROM loan_analytics.fct_loans;
 ```
 
 If zero, re-run `python run_pipeline.py` from `core/python/`.
+
+### SQL syntax errors
+
+**Symptom:** SQL execution fails with syntax errors
+
+**Fix:** Some SQL files contain database-specific functions. You may need to adjust:
+- Date functions (`date_trunc`, `generate_series` in PostgreSQL)
+- Window functions syntax
+- Auto-increment syntax (`IDENTITY` vs `AUTO_INCREMENT` vs `SERIAL`)
+
+See [Database Setup Guide](database_setup.md) for database-specific notes.

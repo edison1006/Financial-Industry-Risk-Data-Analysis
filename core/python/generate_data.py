@@ -245,7 +245,7 @@ def main():
     dim_products.to_csv(os.path.join(cfg.out_dir, "dim_products.csv"), index=False)
     dim_channels.to_csv(os.path.join(cfg.out_dir, "dim_channels.csv"), index=False)
 
-    print("✅ Data generated:", os.path.abspath(cfg.out_dir))
+    print("Data generated:", os.path.abspath(cfg.out_dir))
 
 if __name__ == "__main__":
     main()

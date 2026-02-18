@@ -74,7 +74,7 @@ erDiagram
 
 ## Schema
 
-All tables reside in the `loan_analytics` schema within PostgreSQL.
+All tables reside in the `loan_analytics` schema within your SQL database.
 
 ## Dimension Tables
 

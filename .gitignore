@@ -5,15 +5,28 @@ __pycache__/
 venv/
 .env
 
-# Data
+# Data - Generated files (keep sample data in fake_loan_data/)
+core/data/raw/
+core/data/raw/*.csv
 data/raw/
 data/*.csv
 
+# Visualizations
+visualizations/
+*.png
+*.html
+
 # OS
 .DS_Store
+Thumbs.db
 
 # Power BI
 *.pbix
 
+# IDE
 .idea/
 *.iml
+.vscode/
+
+# Logs
+*.log

@@ -1,8 +1,9 @@
-SET search_path TO loan_analytics;
+-- SQLite-compatible watchlist view
+DROP VIEW IF EXISTS risk_watchlist;
 
 -- Output table created by train_risk_model.py: loan_analytics.risk_scores
 -- Create a watchlist view for Power BI
-CREATE OR REPLACE VIEW risk_watchlist AS
+CREATE VIEW risk_watchlist AS
 SELECT
   s.month_end,
   s.loan_id,

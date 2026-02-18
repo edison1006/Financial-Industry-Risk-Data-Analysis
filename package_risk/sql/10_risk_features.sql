@@ -1,7 +1,10 @@
-SET search_path TO loan_analytics;
+-- SQLite-compatible risk marts
+DROP VIEW IF EXISTS risk_labels_60p_3m;
+DROP VIEW IF EXISTS risk_features_3m;
+DROP VIEW IF EXISTS risk_pay_behaviour_monthly;
 
 -- Payment behaviour by month (paid vs scheduled)
-CREATE OR REPLACE VIEW risk_pay_behaviour_monthly AS
+CREATE VIEW risk_pay_behaviour_monthly AS
 WITH due AS (
   SELECT loan_id, due_month_end AS month_end, scheduled_amt
   FROM mart_loan_due_paid
@@ -20,7 +23,7 @@ FROM due d
 JOIN paid p USING (loan_id, month_end);
 
 -- Rolling 3M features
-CREATE OR REPLACE VIEW risk_features_3m AS
+CREATE VIEW risk_features_3m AS
 WITH x AS (
   SELECT
     s.loan_id,
@@ -34,7 +37,7 @@ WITH x AS (
     c.credit_score,
     c.annual_income_nzd,
     c.employment_type,
-    AVG(b.paid_full_flag::numeric) OVER (PARTITION BY s.loan_id ORDER BY s.month_end ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS roll3_paid_full_rate,
+    AVG(CAST(b.paid_full_flag AS REAL)) OVER (PARTITION BY s.loan_id ORDER BY s.month_end ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS roll3_paid_full_rate,
     SUM(CASE WHEN b.paid_full_flag=0 THEN 1 ELSE 0 END) OVER (PARTITION BY s.loan_id ORDER BY s.month_end ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS roll3_missed_cnt,
     AVG(s.arrears_amt) OVER (PARTITION BY s.loan_id ORDER BY s.month_end ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS roll3_avg_arrears
   FROM mart_portfolio_snapshot_v2 s
@@ -46,7 +49,7 @@ WITH x AS (
 SELECT * FROM x;
 
 -- Label: will enter 60+ within next 3 months
-CREATE OR REPLACE VIEW risk_labels_60p_3m AS
+CREATE VIEW risk_labels_60p_3m AS
 WITH base AS (
   SELECT loan_id, month_end, dpd_bucket
   FROM mart_portfolio_snapshot_v2

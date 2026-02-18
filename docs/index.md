@@ -12,6 +12,10 @@
 | [Commercial Methodology](methodology_commercial.md) | NII, expected loss, RAR calculation methodology | Commercial analysts, pricing |
 | [Assumptions & Limitations](assumptions_and_limitations.md) | What was simplified and how it affects interpretation | Everyone |
 | [Setup Guide](setup_guide.md) | Installation, configuration, Power BI connection | Engineers, new contributors |
+| [Database Setup](database_setup.md) | Database connection strings and compatibility notes | Engineers setting up database |
+| [Visualization Guide](visualization_guide.md) | Python charts, Power BI dashboards, best practices | Analysts, report builders |
+| [Test Data Guide](test_data_guide.md) | Generate test datasets for quick testing | Developers, testers |
+| [Quick Reference](quick_reference.md) | Commands, queries, file locations | Everyone |
 
 ## Reading Order
 
