@@ -57,6 +57,26 @@ This generates:
 - **Interactive HTML dashboard** (if plotly is installed):
   - `interactive_dashboard.html` — Open in a browser for interactive exploration
 
+### One-file HTML Report (includes images)
+
+If you want a *single report file* you can open/share (with the charts embedded), run:
+
+```bash
+python core/python/create_report.py
+```
+
+Output:
+
+- `reports/financial_risk_report.html` — One HTML report with embedded PNG images
+
+Tips:
+
+- If you already generated charts and only want to re-assemble the report:
+
+```bash
+python core/python/create_report.py --skip-visualizations
+```
+
 ### Custom Visualizations
 
 You can create custom visualizations by querying the database marts directly:
